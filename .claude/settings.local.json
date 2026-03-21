@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(npx --version)",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --no-turbopack)",
+      "Bash(npm -v)",
+      "Bash(export PATH=\"/opt/homebrew/bin:/usr/local/bin:$HOME/.nvm/versions/node/*/bin:$HOME/.volta/bin:$PATH\")",
+      "Bash(export PATH=\"/opt/homebrew/bin:$PATH\")",
+      "Bash(npm install:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(cp -r /Users/eyal/git/news-assistant/src/lib/db /Users/eyal/git/news-assistant/server/lib/)",
+      "Bash(cp -r /Users/eyal/git/news-assistant/src/lib/sources /Users/eyal/git/news-assistant/server/lib/)",
+      "Bash(cp -r /Users/eyal/git/news-assistant/src/lib/pipeline /Users/eyal/git/news-assistant/server/lib/)",
+      "Bash(cp -r /Users/eyal/git/news-assistant/src/lib/config /Users/eyal/git/news-assistant/server/lib/)",
+      "Bash(cp -r /Users/eyal/git/news-assistant/src/lib/llm /Users/eyal/git/news-assistant/server/lib/)",
+      "Bash(cp -r /Users/eyal/git/news-assistant/src/lib/scheduler /Users/eyal/git/news-assistant/server/lib/)",
+      "mcp__Claude_Preview__preview_start",
+      "mcp__e395450c-9237-4e3a-8785-d415e5ac6478__read_me",
+      "mcp__e395450c-9237-4e3a-8785-d415e5ac6478__create_view",
+      "Bash(curl -s https://nodejs.org/dist/index.json)",
+      "Bash(python3 -c \"import sys,json; data=json.load\\(sys.stdin\\); lts=[d for d in data if d.get\\(''''lts''''\\)]; print\\(lts[0][''''version''''], lts[0][''''lts'''']\\)\")",
+      "WebSearch",
+      "WebFetch(domain:portkey.ai)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(export PATH=/opt/homebrew/bin:$PATH)",
+      "Bash(eval '$\\(fnm env\\)')",
+      "Bash(fnm use:*)",
+      "Bash(npm ls:*)",
+      "WebFetch(domain:reka-ui.com)",
+      "Bash(xargs ls:*)",
+      "Bash(node -e \":*)",
+      "Read(//Users/eyal/git/news-assistant/$HOME/Library/Application Support/fnm/**)",
+      "Bash(export PATH=\"$HOME/Library/Application Support/fnm/node-versions/v24.14.0/installation/bin:$PATH\")"
+    ]
+  }
+}
