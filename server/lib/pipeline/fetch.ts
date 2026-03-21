@@ -5,6 +5,7 @@ import { deduplicateArticles } from "./dedup";
 import { categorizeArticles } from "./categorize";
 import { storeArticles } from "./store";
 import type { RawArticle, PipelineResult, SourceConfig } from "../types";
+import type { DB } from "../db";
 
 async function fetchSource(source: SourceConfig): Promise<RawArticle[]> {
   switch (source.type) {
@@ -18,7 +19,7 @@ async function fetchSource(source: SourceConfig): Promise<RawArticle[]> {
   }
 }
 
-export async function runFetchPipeline(): Promise<PipelineResult> {
+export async function runFetchPipeline(db: DB): Promise<PipelineResult> {
   const errors: string[] = [];
   const allRawArticles: RawArticle[] = [];
 
@@ -49,7 +50,7 @@ export async function runFetchPipeline(): Promise<PipelineResult> {
   console.log(`[Pipeline] Fetched ${allRawArticles.length} total articles`);
 
   // Deduplicate
-  const unique = await deduplicateArticles(allRawArticles);
+  const unique = await deduplicateArticles(db, allRawArticles);
   console.log(`[Pipeline] ${unique.length} new articles after dedup`);
 
   // Categorize
@@ -58,7 +59,7 @@ export async function runFetchPipeline(): Promise<PipelineResult> {
   console.log(`[Pipeline] ${categorizedCount}/${categorized.length} categorized by keywords`);
 
   // Store
-  const stored = storeArticles(categorized);
+  const stored = await storeArticles(db, categorized);
   console.log(`[Pipeline] Stored ${stored} articles`);
 
   return {

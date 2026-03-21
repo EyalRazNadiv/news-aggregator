@@ -1,8 +1,8 @@
 import crypto from "crypto";
-import { db } from "../db";
 import { articles } from "../db/schema";
 import { inArray } from "drizzle-orm";
 import type { RawArticle } from "../types";
+import type { DB } from "../db";
 
 /**
  * Normalize a URL for deduplication:
@@ -36,7 +36,7 @@ export function hashUrl(url: string): string {
   return crypto.createHash("sha256").update(normalizeUrl(url)).digest("hex").slice(0, 16);
 }
 
-export async function deduplicateArticles(rawArticles: RawArticle[]): Promise<(RawArticle & { urlHash: string })[]> {
+export async function deduplicateArticles(db: DB, rawArticles: RawArticle[]): Promise<(RawArticle & { urlHash: string })[]> {
   // First: deduplicate within the batch by URL hash
   const seen = new Map<string, RawArticle & { urlHash: string }>();
   for (const article of rawArticles) {
@@ -52,11 +52,11 @@ export async function deduplicateArticles(rawArticles: RawArticle[]): Promise<(R
   // Second: check against existing articles in DB
   const hashes = candidates.map((a) => a.urlHash);
 
-  // Batch lookup in chunks of 500 (SQLite variable limit)
+  // Batch lookup in chunks of 80 (D1 has ~100 SQL variable limit)
   const existingHashes = new Set<string>();
-  for (let i = 0; i < hashes.length; i += 500) {
-    const chunk = hashes.slice(i, i + 500);
-    const existing = db
+  for (let i = 0; i < hashes.length; i += 80) {
+    const chunk = hashes.slice(i, i + 80);
+    const existing = await db
       .select({ urlHash: articles.urlHash })
       .from(articles)
       .where(inArray(articles.urlHash, chunk))

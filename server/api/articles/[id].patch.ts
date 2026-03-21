@@ -1,8 +1,9 @@
-import { db } from "../../lib/db";
+import { useDB } from "../../lib/db";
 import { articles } from "../../lib/db/schema";
 import { eq } from "drizzle-orm";
 
 export default defineEventHandler(async (event) => {
+  const db = useDB(event);
   const id = getRouterParam(event, "id");
   if (!id) throw createError({ statusCode: 400, message: "Missing article ID" });
 
@@ -16,7 +17,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: "No valid fields to update" });
   }
 
-  db.update(articles).set(updates).where(eq(articles.id, id)).run();
+  await db.update(articles).set(updates).where(eq(articles.id, id)).execute();
 
   return { ok: true };
 });

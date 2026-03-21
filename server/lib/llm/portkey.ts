@@ -11,7 +11,7 @@ export class PortkeyProvider implements LLMProvider {
       apiKey: opts.apiKey,
       ...(opts.provider && { provider: opts.provider }),
     });
-    this.model = opts.model || "claude-sonnet-4-20250514";
+    this.model = opts.model || "gemini-3-flash-preview";
   }
 
   async summarizeArticle(title: string, content: string): Promise<string> {

@@ -1,12 +1,13 @@
-import { db } from "../../lib/db";
+import { useDB } from "../../lib/db";
 import { articles, sources } from "../../lib/db/schema";
 import { eq } from "drizzle-orm";
 
 export default defineEventHandler(async (event) => {
+  const db = useDB(event);
   const id = getRouterParam(event, "id");
   if (!id) throw createError({ statusCode: 400, message: "Missing article ID" });
 
-  const article = db
+  const article = await db
     .select({
       id: articles.id,
       title: articles.title,
@@ -33,7 +34,7 @@ export default defineEventHandler(async (event) => {
   if (!article) throw createError({ statusCode: 404, message: "Article not found" });
 
   // Mark as read
-  db.update(articles).set({ isRead: 1 }).where(eq(articles.id, id)).run();
+  await db.update(articles).set({ isRead: 1 }).where(eq(articles.id, id)).execute();
 
   return article;
 });

@@ -7,8 +7,8 @@ export default defineNuxtConfig({
   runtimeConfig: {
     anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
     portkeyApiKey: process.env.PORTKEY_API_KEY || "",
-    portkeyProvider: process.env.PORTKEY_PROVIDER || "", // e.g. "@vertex-ai" or custom slug
-    llmProvider: process.env.LLM_PROVIDER || "portkey", // "portkey" | "anthropic"
+    portkeyProvider: process.env.PORTKEY_PROVIDER || "",
+    llmProvider: process.env.LLM_PROVIDER || "portkey",
     newsApiKey: process.env.NEWS_API_KEY || "",
     cronSecret: process.env.CRON_SECRET || "",
   },
@@ -20,11 +20,7 @@ export default defineNuxtConfig({
   },
 
   nitro: {
-    externals: {
-      external: ["better-sqlite3"],
-    },
-    // Ensure these env vars are available in server runtime via process.env
-    envExpansion: true,
+    preset: "cloudflare-pages",
   },
 
   app: {

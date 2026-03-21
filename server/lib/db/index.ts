@@ -1,20 +1,20 @@
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
+import { drizzle as drizzleD1 } from "drizzle-orm/d1";
 import * as schema from "./schema";
-import path from "path";
-import fs from "fs";
+import type { H3Event } from "h3";
 
-const DB_PATH = path.join(process.cwd(), "data", "news.db");
+export type DB = ReturnType<typeof drizzleD1<typeof schema>>;
 
-// Ensure data directory exists
-const dataDir = path.dirname(DB_PATH);
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+/**
+ * Get a Drizzle DB instance from the Cloudflare D1 binding.
+ * Must be called within a Nitro event handler.
+ */
+export function useDB(event: H3Event): DB {
+  const { cloudflare } = event.context;
+  if (!cloudflare?.env?.DB) {
+    throw new Error(
+      "D1 database binding not found. Ensure wrangler.toml has [[d1_databases]] with binding = \"DB\" " +
+      "and you are running via `wrangler pages dev` or deployed to Cloudflare Pages."
+    );
+  }
+  return drizzleD1(cloudflare.env.DB, { schema });
 }
-
-const sqlite = new Database(DB_PATH);
-sqlite.pragma("journal_mode = WAL");
-sqlite.pragma("foreign_keys = ON");
-
-export const db = drizzle(sqlite, { schema });
-export { sqlite };

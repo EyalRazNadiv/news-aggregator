@@ -1,14 +1,15 @@
-import { db } from "../../../lib/db";
+import { useDB } from "../../../lib/db";
 import { articles } from "../../../lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getLLMProvider } from "../../../lib/llm";
 import { scrapeArticleContent } from "../../../lib/scraper";
 
 export default defineEventHandler(async (event) => {
+  const db = useDB(event);
   const id = getRouterParam(event, "id");
   if (!id) throw createError({ statusCode: 400, message: "Missing article ID" });
 
-  const article = db
+  const article = await db
     .select({
       id: articles.id,
       title: articles.title,
@@ -35,7 +36,7 @@ export default defineEventHandler(async (event) => {
       if (scraped) {
         content = scraped;
         // Cache the scraped content in the DB for future use
-        db.update(articles).set({ content: scraped }).where(eq(articles.id, id)).run();
+        await db.update(articles).set({ content: scraped }).where(eq(articles.id, id)).execute();
       }
     }
 
@@ -43,13 +44,13 @@ export default defineEventHandler(async (event) => {
     const summary = await provider.summarizeArticle(article.title, content);
 
     // Store in DB
-    db.update(articles)
+    await db.update(articles)
       .set({
         aiSummary: summary,
         summarizedAt: new Date().toISOString(),
       })
       .where(eq(articles.id, id))
-      .run();
+      .execute();
 
     return { summary, cached: false };
   } catch (err) {

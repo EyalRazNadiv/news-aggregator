@@ -1,3 +1,4 @@
+import { useDB } from "../lib/db";
 import { runFetchPipeline } from "../lib/pipeline/fetch";
 
 export default defineEventHandler(async (event) => {
@@ -14,6 +15,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: "Invalid secret" });
   }
 
-  const result = await runFetchPipeline();
+  const db = useDB(event);
+  const result = await runFetchPipeline(db);
   return result;
 });

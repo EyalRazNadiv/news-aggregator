@@ -1,9 +1,9 @@
-import { db } from "../db";
 import { articles, digests } from "../db/schema";
-import { eq, gte, lte, desc, sql } from "drizzle-orm";
+import { eq, gte, desc, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getLLMProvider } from "../llm";
 import { TOPICS } from "../config/topics";
+import type { DB } from "../db";
 
 interface DigestResult {
   id: string;
@@ -14,11 +14,12 @@ interface DigestResult {
 }
 
 export async function generateDigest(
+  db: DB,
   date: string,
   method: "aggregation" | "ai-summary" = "aggregation"
 ): Promise<DigestResult> {
   // Check if digest already exists for this date
-  const existing = db
+  const existing = await db
     .select()
     .from(digests)
     .where(eq(digests.date, date))
@@ -36,9 +37,8 @@ export async function generateDigest(
 
   // Get articles for the date
   const startOfDay = `${date}T00:00:00.000Z`;
-  const endOfDay = `${date}T23:59:59.999Z`;
 
-  const dayArticles = db
+  const dayArticles = await db
     .select({
       id: articles.id,
       title: articles.title,
@@ -53,8 +53,8 @@ export async function generateDigest(
     .all();
 
   if (dayArticles.length === 0) {
-    // No articles for this date, try using all articles from the last 24h
-    const allArticles = db
+    // No articles for this date, try using all recent articles
+    const allArticles = await db
       .select({
         id: articles.id,
         title: articles.title,
@@ -72,27 +72,25 @@ export async function generateDigest(
       throw new Error("No articles available to generate a digest");
     }
 
-    return buildDigest(date, allArticles, method);
+    return buildDigest(db, date, allArticles, method);
   }
 
-  return buildDigest(date, dayArticles, method);
+  return buildDigest(db, date, dayArticles, method);
 }
 
 /** Returns cleaned content if it's a usable excerpt, or null if it's junk */
 function isCleanContent(content: string | null): string | null {
   if (!content) return null;
   const trimmed = content.trim();
-  // HN raw metadata
   if (/^(Article URL:|Comments URL:|Points:|# Comments:)/i.test(trimmed)) return null;
   if (/https?:\/\/\S+\s+(Comments URL|Points:)/i.test(trimmed)) return null;
-  // Scraped page chrome (nav text, "Back to...", "Published...", "Upvote")
   if (/^(Back to \w+|Published |Upvote \d|Enterprise \+)/i.test(trimmed)) return null;
-  // Content that looks like scraped page fragments (too many non-sentence tokens)
   if (trimmed.split(/\s+/).length < 5) return null;
   return trimmed;
 }
 
 async function buildDigest(
+  db: DB,
   date: string,
   dayArticles: { id: string; title: string; content: string | null; topicId: string | null; publishedAt: string | null; url: string }[],
   method: "aggregation" | "ai-summary"
@@ -122,18 +120,16 @@ async function buildDigest(
 
       content += `## ${topicName}\n\n`;
 
-      // Generate AI summary for this topic
       try {
         const summary = await provider.generateDigestSummary(
           topicName,
           topicArticles.map((a) => ({ title: a.title, content: a.content || undefined }))
         );
         content += `${summary}\n\n`;
-      } catch (err) {
+      } catch {
         content += `*AI summary unavailable for this section.*\n\n`;
       }
 
-      // List articles
       content += `**Articles:**\n`;
       for (const a of topicArticles.slice(0, 10)) {
         content += `- ${a.title}\n`;
@@ -141,7 +137,6 @@ async function buildDigest(
       content += `\n`;
     }
   } else {
-    // Aggregation mode — just list articles grouped by topic
     for (const slug of topicOrder) {
       const topicArticles = grouped[slug];
       if (!topicArticles?.length) continue;
@@ -169,7 +164,7 @@ async function buildDigest(
 
   // Store digest
   const id = nanoid();
-  db.insert(digests)
+  await db.insert(digests)
     .values({
       id,
       date,
@@ -187,7 +182,7 @@ async function buildDigest(
         method,
       },
     })
-    .run();
+    .execute();
 
   return { id, date, method, articleCount: dayArticles.length, content };
 }

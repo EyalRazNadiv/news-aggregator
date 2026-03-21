@@ -1,39 +1,101 @@
-import Parser from "rss-parser";
 import type { RawArticle, SourceConfig } from "../types";
 
-const parser = new Parser({
-  timeout: 10000,
-  headers: {
-    "User-Agent": "AI-News-Assistant/1.0",
-  },
-});
-
+/**
+ * Minimal RSS/Atom parser that works in Cloudflare Workers.
+ * Uses fetch + regex XML parsing instead of rss-parser (which needs Node EventEmitter).
+ */
 export async function fetchRSSSource(source: SourceConfig): Promise<RawArticle[]> {
-  const feed = await parser.parseURL(source.url);
+  const response = await fetch(source.url, {
+    headers: { "User-Agent": "AI-News-Assistant/1.0" },
+    signal: AbortSignal.timeout(10000),
+  });
 
-  return (feed.items || []).map((item) => ({
-    title: item.title?.trim() || "Untitled",
-    url: item.link || "",
-    author: item.creator || item["dc:creator"] || undefined,
-    publishedAt: item.isoDate || item.pubDate || undefined,
-    content: item.contentSnippet?.slice(0, 500) || item.content?.slice(0, 500) || undefined,
-    imageUrl: extractImageUrl(item),
-    sourceName: source.name,
-    sourceId: source.id,
-  })).filter((a) => a.url); // drop items without URLs
+  if (!response.ok) {
+    throw new Error(`RSS fetch failed: ${response.status} ${response.statusText}`);
+  }
+
+  const xml = await response.text();
+  return parseRSSXML(xml, source);
 }
 
-function extractImageUrl(item: Record<string, unknown>): string | undefined {
-  // Try common RSS image fields
-  const enclosure = item.enclosure as { url?: string; type?: string } | undefined;
-  if (enclosure?.url && enclosure.type?.startsWith("image")) {
-    return enclosure.url;
+function parseRSSXML(xml: string, source: SourceConfig): RawArticle[] {
+  const articles: RawArticle[] = [];
+
+  // Try RSS 2.0 <item> elements first, then Atom <entry>
+  const itemRegex = /<item[\s>]([\s\S]*?)<\/item>/gi;
+  const entryRegex = /<entry[\s>]([\s\S]*?)<\/entry>/gi;
+
+  const matches = [...xml.matchAll(itemRegex)];
+  const isAtom = matches.length === 0;
+  const entries = isAtom ? [...xml.matchAll(entryRegex)] : matches;
+
+  for (const match of entries) {
+    const block = match[1];
+
+    const title = extractTag(block, "title");
+    const link = isAtom ? extractAtomLink(block) : extractTag(block, "link");
+    const author = extractTag(block, "dc:creator") || extractTag(block, "author") || extractTag(block, "name");
+    const pubDate = extractTag(block, "pubDate") || extractTag(block, "published") || extractTag(block, "updated");
+    const description = extractTag(block, "description") || extractTag(block, "summary") || extractTag(block, "content");
+
+    if (!link) continue;
+
+    articles.push({
+      title: decodeEntities(title || "Untitled").trim(),
+      url: link.trim(),
+      author: author ? decodeEntities(author).trim() : undefined,
+      publishedAt: pubDate ? new Date(pubDate).toISOString() : undefined,
+      content: description ? decodeEntities(stripHTML(description)).slice(0, 500) : undefined,
+      imageUrl: extractImageFromBlock(block),
+      sourceName: source.name,
+      sourceId: source.id,
+    });
   }
 
-  const mediaContent = item["media:content"] as { $?: { url?: string } } | undefined;
-  if (mediaContent?.$?.url) {
-    return mediaContent.$.url;
-  }
+  return articles;
+}
+
+function extractTag(block: string, tag: string): string | null {
+  // Handle CDATA: <tag><![CDATA[content]]></tag>
+  const cdataRegex = new RegExp(`<${tag}[^>]*>\\s*<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>\\s*</${tag}>`, "i");
+  const cdataMatch = block.match(cdataRegex);
+  if (cdataMatch) return cdataMatch[1];
+
+  // Handle regular: <tag>content</tag>
+  const regex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i");
+  const match = block.match(regex);
+  return match ? match[1] : null;
+}
+
+function extractAtomLink(block: string): string | null {
+  // Atom links are self-closing: <link href="..." rel="alternate" />
+  const linkMatch = block.match(/<link[^>]*href=["']([^"']+)["'][^>]*\/?>/i);
+  return linkMatch ? linkMatch[1] : null;
+}
+
+function extractImageFromBlock(block: string): string | undefined {
+  // <enclosure url="..." type="image/..." />
+  const enclosure = block.match(/<enclosure[^>]*url=["']([^"']+)["'][^>]*type=["']image[^"']*["']/i);
+  if (enclosure) return enclosure[1];
+
+  // <media:content url="..." />
+  const media = block.match(/<media:content[^>]*url=["']([^"']+)["']/i);
+  if (media) return media[1];
 
   return undefined;
+}
+
+function stripHTML(html: string): string {
+  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function decodeEntities(text: string): string {
+  return text
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)));
 }

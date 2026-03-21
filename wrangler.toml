@@ -1,0 +1,10 @@
+name = "news-aggregator"
+compatibility_date = "2025-03-21"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "dist"
+
+# D1 database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "news-aggregator-db"
+database_id = "b9eae9f9-d393-4180-ad9a-0c9315c4233a"

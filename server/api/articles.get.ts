@@ -1,8 +1,9 @@
-import { db } from "../lib/db";
+import { useDB } from "../lib/db";
 import { articles, sources } from "../lib/db/schema";
 import { desc, eq, like, sql } from "drizzle-orm";
 
 export default defineEventHandler(async (event) => {
+  const db = useDB(event);
   const query = getQuery(event);
   const topic = query.topic as string | undefined;
   const search = query.search as string | undefined;

@@ -1,24 +1,25 @@
-import { db } from "../lib/db";
+import { useDB } from "../lib/db";
 import { articles } from "../lib/db/schema";
-import { sql, eq, gte } from "drizzle-orm";
+import { sql, gte } from "drizzle-orm";
 
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
+  const db = useDB(event);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayStr = today.toISOString();
 
-  const total = db
+  const total = await db
     .select({ count: sql<number>`count(*)` })
     .from(articles)
     .get();
 
-  const todayCount = db
+  const todayCount = await db
     .select({ count: sql<number>`count(*)` })
     .from(articles)
     .where(gte(articles.fetchedAt, todayStr))
     .get();
 
-  const byTopic = db
+  const byTopic = await db
     .select({
       topicId: articles.topicId,
       count: sql<number>`count(*)`,
