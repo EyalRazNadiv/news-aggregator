@@ -1,4 +1,5 @@
-import { DEFAULT_SOURCES } from "../config/sources";
+import { sources } from "../db/schema";
+import { eq } from "drizzle-orm";
 import { fetchRSSSource } from "../sources/rss";
 import { fetchNewsAPISource } from "../sources/newsapi";
 import { deduplicateArticles } from "./dedup";
@@ -23,14 +24,36 @@ export async function runFetchPipeline(db: DB): Promise<PipelineResult> {
   const errors: string[] = [];
   const allRawArticles: RawArticle[] = [];
 
-  // Fetch from all sources concurrently
-  console.log(`[Pipeline] Fetching from ${DEFAULT_SOURCES.length} sources...`);
+  // Read enabled sources from the database
+  const dbSources = await db
+    .select()
+    .from(sources)
+    .where(eq(sources.enabled, 1))
+    .execute();
+
+  const enabledSources: SourceConfig[] = dbSources.map((s) => ({
+    id: s.id,
+    name: s.name,
+    type: s.type as "rss" | "newsapi",
+    url: s.url,
+    config: s.config ? JSON.parse(s.config) : undefined,
+  }));
+
+  console.log(`[Pipeline] Fetching from ${enabledSources.length} sources...`);
 
   const results = await Promise.allSettled(
-    DEFAULT_SOURCES.map(async (source) => {
+    enabledSources.map(async (source) => {
       try {
         const articles = await fetchSource(source);
         console.log(`[Pipeline] ${source.name}: ${articles.length} articles`);
+
+        // Update lastFetchedAt
+        await db
+          .update(sources)
+          .set({ lastFetchedAt: new Date().toISOString() })
+          .where(eq(sources.id, source.id))
+          .execute();
+
         return articles;
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

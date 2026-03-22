@@ -40,7 +40,7 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    const provider = getLLMProvider();
+    const provider = getLLMProvider(event);
     const summary = await provider.summarizeArticle(article.title, content);
 
     // Store in DB

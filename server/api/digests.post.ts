@@ -7,6 +7,6 @@ export default defineEventHandler(async (event) => {
   const date = body.date || new Date().toISOString().split("T")[0];
   const method = body.method === "ai-summary" ? "ai-summary" : "aggregation";
 
-  const result = await generateDigest(db, date, method);
+  const result = await generateDigest(db, date, method, event);
   return result;
 });

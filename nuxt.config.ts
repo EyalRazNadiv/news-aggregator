@@ -21,6 +21,8 @@ export default defineNuxtConfig({
 
   nitro: {
     preset: "cloudflare-pages",
+    // nitro-cloudflare-dev reads wrangler.toml and emulates D1 bindings in dev
+    modules: ["nitro-cloudflare-dev"],
   },
 
   app: {

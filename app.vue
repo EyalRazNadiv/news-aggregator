@@ -13,6 +13,7 @@ const route = useRoute()
 const currentTopic = computed(() => route.query.topic as string | undefined)
 const isOnDigests = computed(() => route.path.startsWith('/digests'))
 const isOnBookmarks = computed(() => route.path === '/bookmarks')
+const isOnSources = computed(() => route.path === '/sources')
 const isOnHome = computed(() => route.path === '/' && !currentTopic.value)
 const isFetching = ref(false)
 const sidebarOpen = ref(false)
@@ -111,6 +112,14 @@ watch(() => route.fullPath, () => {
           :class="isOnBookmarks ? 'bg-blue-600/20 text-blue-400 font-medium' : 'text-gray-400 hover:bg-gray-800'"
         >
           Bookmarks
+        </NuxtLink>
+
+        <NuxtLink
+          to="/sources"
+          class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors"
+          :class="isOnSources ? 'bg-blue-600/20 text-blue-400 font-medium' : 'text-gray-400 hover:bg-gray-800'"
+        >
+          Sources
         </NuxtLink>
       </nav>
 

@@ -29,6 +29,7 @@
     "@types/node": "^25.5.0",
     "drizzle-kit": "^0.31.10",
     "eslint": "^10.1.0",
+    "nitro-cloudflare-dev": "^0.2.2",
     "tailwindcss": "^4.2.2",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.21.0",

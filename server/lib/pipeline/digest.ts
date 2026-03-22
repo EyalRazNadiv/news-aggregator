@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import { getLLMProvider } from "../llm";
 import { TOPICS } from "../config/topics";
 import type { DB } from "../db";
+import type { H3Event } from "h3";
 
 interface DigestResult {
   id: string;
@@ -16,7 +17,8 @@ interface DigestResult {
 export async function generateDigest(
   db: DB,
   date: string,
-  method: "aggregation" | "ai-summary" = "aggregation"
+  method: "aggregation" | "ai-summary" = "aggregation",
+  event?: H3Event
 ): Promise<DigestResult> {
   // Check if digest already exists for this date
   const existing = await db
@@ -72,10 +74,10 @@ export async function generateDigest(
       throw new Error("No articles available to generate a digest");
     }
 
-    return buildDigest(db, date, allArticles, method);
+    return buildDigest(db, date, allArticles, method, event);
   }
 
-  return buildDigest(db, date, dayArticles, method);
+  return buildDigest(db, date, dayArticles, method, event);
 }
 
 /** Returns cleaned content if it's a usable excerpt, or null if it's junk */
@@ -93,7 +95,8 @@ async function buildDigest(
   db: DB,
   date: string,
   dayArticles: { id: string; title: string; content: string | null; topicId: string | null; publishedAt: string | null; url: string }[],
-  method: "aggregation" | "ai-summary"
+  method: "aggregation" | "ai-summary",
+  event?: H3Event
 ): Promise<DigestResult> {
   // Group by topic
   const grouped: Record<string, typeof dayArticles> = {};
@@ -109,7 +112,7 @@ async function buildDigest(
   const topicOrder = [...TOPICS.map((t) => t.slug), "uncategorized"];
 
   if (method === "ai-summary") {
-    const provider = getLLMProvider();
+    const provider = getLLMProvider(event);
 
     for (const slug of topicOrder) {
       const topicArticles = grouped[slug];
